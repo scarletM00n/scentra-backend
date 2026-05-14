@@ -4,6 +4,7 @@ import { randomInt } from "crypto";
 import { auth_services } from "../services/auth.service";
 import { toPublicUploadPath } from "../utils/uploadFile";
 import { getFirebaseAdmin, sendOTPEmail, verifyOTP } from "../services/emailService";
+import { prisma } from "../model/prisma";
 
 const authService = new auth_services() ;
 const firebaseAdmin = getFirebaseAdmin();
@@ -104,6 +105,30 @@ export const verifyOtpAndCreateUser = async (req: Request, res: Response) => {
                 createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
                 verified: true,
             });
+
+            const prismaUser = await prisma.user.findUnique({
+                where: {
+                    email: normalizedEmail,
+                },
+                select: {
+                    id: true,
+                    is_email_verified: true,
+                },
+            });
+
+            if (prismaUser && !prismaUser.is_email_verified) {
+                await prisma.user.update({
+                    where: {
+                        id: prismaUser.id,
+                    },
+                    data: {
+                        is_email_verified: true,
+                        email_verification_code_hash: null,
+                        email_verification_code_expires_at: null,
+                        email_verification_sent_at: null,
+                    },
+                });
+            }
 
             await firebaseAdmin.firestore().collection("otps").doc(normalizedEmail).delete();
         } catch (firestoreError) {
