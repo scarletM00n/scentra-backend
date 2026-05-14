@@ -106,7 +106,7 @@ export const verifyOtpAndCreateUser = async (req: Request, res: Response) => {
                 verified: true,
             });
 
-            await prisma.user.updateMany({
+            const prismaUpdateResult = await prisma.user.updateMany({
                 where: {
                     email: normalizedEmail,
                     is_email_verified: false,
@@ -118,6 +118,21 @@ export const verifyOtpAndCreateUser = async (req: Request, res: Response) => {
                     email_verification_sent_at: null,
                 },
             });
+
+            if (prismaUpdateResult.count === 0) {
+                const prismaUser = await prisma.user.findUnique({
+                    where: {
+                        email: normalizedEmail,
+                    },
+                    select: {
+                        is_email_verified: true,
+                    },
+                });
+
+                if (prismaUser && !prismaUser.is_email_verified) {
+                    throw new Error("Failed to update email verification status in database");
+                }
+            }
 
             await firebaseAdmin.firestore().collection("otps").doc(normalizedEmail).delete();
         } catch (firestoreError) {
