@@ -130,7 +130,9 @@ export const verifyOtpAndCreateUser = async (req: Request, res: Response) => {
                 });
 
                 if (prismaUser && !prismaUser.is_email_verified) {
-                    throw new Error("Failed to update email verification status in database");
+                    throw new Error(
+                        `Failed to update email verification status in database for ${normalizedEmail}`,
+                    );
                 }
             }
 
