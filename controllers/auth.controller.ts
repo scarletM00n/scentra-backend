@@ -106,29 +106,18 @@ export const verifyOtpAndCreateUser = async (req: Request, res: Response) => {
                 verified: true,
             });
 
-            const prismaUser = await prisma.user.findUnique({
+            await prisma.user.updateMany({
                 where: {
                     email: normalizedEmail,
+                    is_email_verified: false,
                 },
-                select: {
-                    id: true,
+                data: {
                     is_email_verified: true,
+                    email_verification_code_hash: null,
+                    email_verification_code_expires_at: null,
+                    email_verification_sent_at: null,
                 },
             });
-
-            if (prismaUser && !prismaUser.is_email_verified) {
-                await prisma.user.update({
-                    where: {
-                        id: prismaUser.id,
-                    },
-                    data: {
-                        is_email_verified: true,
-                        email_verification_code_hash: null,
-                        email_verification_code_expires_at: null,
-                        email_verification_sent_at: null,
-                    },
-                });
-            }
 
             await firebaseAdmin.firestore().collection("otps").doc(normalizedEmail).delete();
         } catch (firestoreError) {
